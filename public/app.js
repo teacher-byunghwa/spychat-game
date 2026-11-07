@@ -31,7 +31,7 @@ $('soundBtn').onclick=()=>{soundEnabled=!soundEnabled;$('soundBtn').textContent=
 function addRanks(target,ranking){
  const root=$(target);root.replaceChildren();const heading=elem('h2',null,'🏅 누적 순위표');root.append(heading);
  if(!ranking?.length){root.append(elem('p','muted','표시할 참가자가 없습니다.'));return;}
- ranking.forEach(p=>{const line=elem('div','rankLine'+(p.rank<=3?' topRank':''));const medal=p.rank===1?'🥇':p.rank===2?'🥈':p.rank===3?'🥉':`${p.rank}위`;line.append(elem('span','rankPlace',medal),elem('b','rankName',p.name),elem('strong','rankScore',`${p.score}점`));root.append(line);});
+ ranking.forEach(p=>{const line=elem('div','rankLine'+(p.rank<=3?' topRank':''));const medal=p.rank===1?'🥇':p.rank===2?'🥈':p.rank===3?'🥉':`${p.rank}위`;line.append(elem('span','rankPlace',medal),elem('b','rankName',p.name),elem('strong','rankScore',`${p.score}점${p.teamBonus ? ' (팀 승리 +1)' : ''}`));root.append(line);});
 }
 function showRoundResult(result){if(!result||lastRoundShown===result.id)return;lastRoundShown=result.id;
  $('roundPopupMessage').textContent=result.message+` · 제시어: ${result.word} · 스파이: ${result.spies.map(p=>p.name).join(', ')}`;
@@ -53,12 +53,12 @@ function teacherAction(action,payload={}){request('teacher:action',{code:session
 function attach(){const saved=JSON.parse(localStorage.getItem('spy-game-session')||'null');const room=new URLSearchParams(location.search).get('room');if(room)$('roomCode').value=room.toUpperCase();if(!saved?.code||!saved?.token)return;if(room&&room.toUpperCase()!==saved.code)return;session.mode=saved.mode;session.code=saved.code;session.token=saved.token;if(saved.mode==='teacher')request('teacher:rejoin',{code:saved.code,token:saved.token},()=>{show('teacher');renderTeacher();});else if(saved.mode==='student')request('student:join',{code:saved.code,token:saved.token},()=>show('student'));}
 socket.on('connect',()=>{$('connection').textContent='● 서버 연결됨';attach();});socket.on('disconnect',()=>{$('connection').textContent='○ 연결 끊김';});socket.on('error:message',e=>toast(e.message));socket.on('session:replaced',()=>{toast('다른 기기에서 접속하여 연결이 바뀌었습니다.');localStorage.removeItem('spy-game-session');show('home');});socket.on('student:kicked',()=>{localStorage.removeItem('spy-game-session');session.state=null;show('home');toast('교사가 게임방에서 퇴장시켰습니다.');});
 socket.on('teacher:state',state=>{if(session.mode==='teacher'||session.mode===null){
- const previous=session.state;session.state=state;clockOffset=state.serverTime-Date.now();session.code=state.code;show('teacher');renderTeacher();updateFinalClock();
+ const previous=session.state;session.state=state;clockOffset=state.serverTime-Date.now();session.code=state.code;if(state.phase==='lobby'&&previous?.phase==='finished'){pendingRound=null;resultQueue.length=0;$('resultPopup').hidden=true;$('roundPopup').hidden=true;}show('teacher');renderTeacher();updateFinalClock();
  if(previous?.round===state.round&&previous.clues?.length<state.clues.length)playSound('clue');
  if(state.phase==='finished')stageRoundResult(state.result);
  }});
 socket.on('student:state',state=>{if(session.mode==='student'){
- const previous=session.state;session.state=state;clockOffset=state.serverTime-Date.now();renderStudent();updateFinalClock();
+ const previous=session.state;session.state=state;clockOffset=state.serverTime-Date.now();if(state.phase==='lobby'&&previous?.phase==='finished'){pendingRound=null;resultQueue.length=0;$('resultPopup').hidden=true;$('roundPopup').hidden=true;}renderStudent();updateFinalClock();
  if(previous?.round===state.round&&previous.clues?.length<state.clues.length)playSound('clue');
  if(state.phase==='finished')stageRoundResult(state.result);
  }});
@@ -71,8 +71,15 @@ function showNextResult(){if(!$('resultPopup').hidden){return;}if(!resultQueue.l
  const success=item.type==='spy-win'||(item.title||'').includes('발견');
  $('resultPopup').classList.add(success?'successEffect':'failureEffect');
  $('resultPopupIcon').textContent=item.type==='student-out'?'❌':item.type==='spy-win'?'🏆':'🚨';
- $('resultPopupTitle').textContent=item.title;$('resultPopupMessage').textContent=item.message;
- const art=$('resultArt');art.src=item.type==='student-out'?'/assets/student-result-banner.png':item.type==='spy-win'?'/assets/win-result-banner.png':'/assets/spy-result-banner.png';art.alt=item.title;
+ $('resultPopupTitle').textContent=item.title;
+ // Names are supplied by the server from the actual eliminated participant record.
+ // A missing or invalid name must NEVER be replaced with an example student's name.
+ if(item.type==='student-out'||item.type==='spy-out'){
+  const actual=session.state?.players?.find(p=>p.id===item.eliminatedId);
+  const name=actual?.name||item.eliminatedName;
+  $('resultPopupMessage').textContent=name ? (item.type==='student-out' ? `${name} 학생이 스파이 지목에 실패하여 탈락했습니다.` : `${name} 학생은 스파이였습니다! 정체가 공개되고 탈락했습니다.`) : '참가자 한 명이 탈락했습니다.';
+ } else $('resultPopupMessage').textContent=item.message;
+ const art=$('resultArt');art.src=item.type==='student-out'?'/assets/student-character.png':'/assets/spy-character.png';art.alt=item.type==='student-out'?'일반학생 캐릭터':'스파이 캐릭터';
  const confetti=$('confetti');confetti.replaceChildren();
  if(success){for(let i=0;i<24;i++){const dot=elem('i','confettiPiece');dot.style.setProperty('--x',`${(i*37)%100}%`);dot.style.setProperty('--delay',`${(i%6)*.09}s`);dot.style.setProperty('--hue',String((i*47)%360));confetti.append(dot);}}
  $('resultPopup').hidden=false;playSound(success?'success':'failure');
@@ -90,6 +97,7 @@ $('studentName').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinBtn').
 $('copyLink').onclick=()=>navigator.clipboard.writeText(inviteUrl()).then(()=>toast('입장 링크를 복사했습니다.')).catch(()=>toast('브라우저에서 복사가 제한되어 있습니다.'));
 $('startBtn').onclick=()=>teacherAction('start',{word:$('wordInput').value,spyCount:Number($('spyInput').value)});
 $('pauseBtn').onclick=()=>teacherAction('pause');$('skipBtn').onclick=()=>teacherAction('skip');$('stopBtn').onclick=()=>{if(confirm('이번 라운드를 즉시 종료할까요?'))teacherAction('stop');};$('lobbyBtn').onclick=()=>{if(confirm('대기실로 돌아갈까요? 점수는 유지됩니다.'))teacherAction('lobby');};
+$('newGameBtn').onclick=()=>{if(confirm('새 게임을 시작할까요? 참가자와 방 코드는 유지하지만 모든 학생 점수는 0점으로 초기화됩니다.'))teacherAction('new_game');};
 function makePlayer(p,teacher=false,role=null){const root=elem('div','player'+(p.out?' out':''));root.append(elem('div','avatar',p.out?'✕':'🙂'));const meta=elem('div','playerMeta');meta.append(elem('b',null,p.name));const labels=[p.out?'아웃':p.online?'접속 중':'오프라인'];if(p.revealed)labels.push('스파이 공개');if(teacher&&role==='spy')labels.push('🕵️ 스파이');meta.append(elem('small',null,labels.join(' · ')));root.append(meta,elem('div','playerScore',p.score+'점'));if(teacher){const kick=elem('button','kick','강퇴');kick.disabled=p.out&&p.revealed;kick.onclick=()=>{if(confirm(`${p.name} 학생을 강퇴할까요?`))teacherAction('kick',{playerId:p.id});};root.append(kick);}return root;}
 function renderChat(id,messages){
  const el=$(id);if(!el)return;
@@ -110,7 +118,7 @@ $('chatForm').onsubmit=e=>{
 };
 function renderHighlight(where,item,empty){const target=$(where);target.replaceChildren();target.classList.toggle('empty',!item);if(item){target.append(elem('div','who',item.name+'의 설명'),elem('div',null,item.text));}else target.textContent=empty;}
 function renderTeacher(){const s=session.state;if(!s)return;$('teacherCode').textContent=s.code;$('qr').src='/qr/'+s.code;$('entryUrl').textContent=inviteUrl();$('playerCount').textContent=s.players.length;$('onlineCount').textContent=s.players.filter(p=>p.online).length;$('roundNum').textContent=s.round;
- const playing=s.phase==='playing'||s.phase==='final_guess';$('startBtn').disabled=playing;$('pauseBtn').disabled=!playing;$('stopBtn').disabled=!playing;$('skipBtn').disabled=s.phase!=='playing'||s.paused;$('lobbyBtn').disabled=playing;$('wordInput').disabled=playing;$('spyInput').disabled=playing;$('pauseBtn').textContent=s.paused?'▶ 게임 재개':'⏸ 일시정지';$('spyInput').max=Math.max(1,s.players.length-1);
+ const playing=s.phase==='playing'||s.phase==='final_guess';$('startBtn').disabled=playing;$('pauseBtn').disabled=!playing;$('stopBtn').disabled=!playing;$('skipBtn').disabled=s.phase!=='playing'||s.paused;$('lobbyBtn').disabled=playing;$('newGameBtn').hidden=s.phase!=='finished';$('newGameBtn').disabled=s.phase!=='finished';$('wordInput').disabled=playing;$('spyInput').disabled=playing;$('pauseBtn').textContent=s.paused?'▶ 게임 재개':'⏸ 일시정지';$('spyInput').max=Math.max(1,s.players.length-1);
  const alive=s.players.filter(p=>!p.out);const spies=s.spyIds.filter(id=>alive.some(p=>p.id===id));
  $('liveConnected').textContent=`${s.connectedCount} / ${s.players.length}`;
  $('liveAlive').textContent=`${alive.length}명`;
@@ -122,14 +130,14 @@ function renderTeacher(){const s=session.state;if(!s)return;$('teacherCode').tex
  $('liveTurnInfo').textContent=s.phase==='playing'?(s.paused?'교사가 일시정지한 상태입니다.': '설명을 입력하면 다음 학생으로 자동 이동합니다.'):'게임 시작 시 차례가 표시됩니다.';
  $('lastActivity').textContent=s.history.length?new Date(s.history[s.history.length-1].time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';
  $('teacherLiveEvents').replaceChildren(...[...s.history].slice(-5).reverse().map(h=>elem('div','eventLine',h.message)));
- $('teacherRanking').hidden=s.phase!=='finished';if(s.phase==='finished')addRanks('teacherRanking',s.result?.leaderboard);
+ if(s.phase==='lobby'&&s.round===0)$('wordInput').value='';$('teacherRanking').hidden=s.phase!=='finished';if(s.phase==='finished')addRanks('teacherRanking',s.result?.leaderboard);
  if(playing&&!$('wordInput').value)$('wordInput').value=s.word;const turn=s.players.find(p=>p.id===s.turnId);$('teacherStatus').textContent=s.phase==='lobby'?'학생들이 입장하면 제시어와 스파이 인원을 정하고 시작하세요.':s.phase==='finished'?(s.result?.message||'라운드가 종료되었습니다.'):(s.paused?'⏸ 일시정지 중 · ':'▶ 진행 중 · ')+(s.phase==='final_guess'?'최종 추리 시간 60초':turn?`현재 차례: ${turn.name}`:'차례 없음');$('teacherTurn').textContent=turn?'현재 차례: '+turn.name:'';
  $('teacherSecret').textContent=playing?`교사 전용 | 제시어: ${s.word} · 스파이: ${s.spyIds.map(id=>s.players.find(p=>p.id===id)?.name).join(', ')}`:'';
  renderChat('teacherChat',s.chat);const roster=$('teacherPlayers');roster.replaceChildren(...s.players.map(p=>makePlayer(p,true,s.spyIds.includes(p.id)?'spy':null)));renderHighlight('teacherHighlight',s.highlight,'아직 설명이 없습니다.');const hist=$('teacherHistory');hist.replaceChildren(...[...s.history].reverse().map(h=>elem('div',null,h.message)));}
 // A private, one-time role reveal per student and round. The ordinary screen never
 // keeps role labels, role-specific art, or the secret word visible.
 let roleRevealKey=null;
-function roleSeenKey(s){return `spy-role-seen:${session.code}:${session.token}:${s.round}`;}
+function roleSeenKey(s){return `spy-role-seen:${session.code}:${session.token}:${s.gameVersion||1}:${s.round}`;}
 function syncRoleReveal(s){
  if((s.phase!=='playing'&&s.phase!=='final_guess')||!s.you?.role||!s.round){$('roleReveal').hidden=true;return;}
  const key=roleSeenKey(s);
@@ -171,7 +179,7 @@ function renderStudent(){const s=session.state;if(!s)return;const you=s.you;rend
  $('studentPlayers').replaceChildren(...s.players.map(p=>makePlayer(p)));const result=$('studentResult');result.hidden=s.phase!=='finished';if(s.phase==='finished'){result.replaceChildren(elem('h2',null,'🏁 라운드 결과'),elem('p',null,s.result?.message||'종료'),elem('p',null,'정답: '+(s.result?.word||'')),elem('p',null,'스파이: '+(s.result?.spies.map(p=>p.name).join(', ')||'')));const ranking=elem('div');ranking.id='studentRankings';result.append(ranking);addRanks('studentRankings',s.result?.leaderboard);}}
 $('clueForm').onsubmit=e=>{e.preventDefault();const text=$('clueInput').value.trim();request('student:clue',{code:session.code,token:session.token,text},()=>{$('clueInput').value='';toast('설명이 전체 학생에게 표시되었습니다.');});};
 function closeModal(){$('modal').hidden=true;}$('closeModal').onclick=closeModal;$('cancelChallenge').onclick=closeModal;
-$('challengeBtn').onclick=()=>{const s=session.state;if(!s||(s.phase!=='playing'&&s.phase!=='final_guess')||s.paused||s.you.out||(s.phase==='final_guess'&&s.you.role!=='spy'))return;const spy=s.you.role==='spy';$('modalTitle').textContent=spy?'🕵️ 제시어 맞히기':'🎯 스파이 지목하기';$('modalHelp').textContent=spy?'챌린지 신청자는 다른 학생에게 공개되지 않습니다. 기회는 한 번입니다. 오답이면 아웃됩니다.':'익명으로 스파이를 지목합니다. 정답이면 스파이만 공개되고 본인 +1점, 오답이면 내 이름이 공개되고 아웃됩니다.';const options=$('modalOptions');options.replaceChildren();if(spy){const input=elem('input');input.id='guessWord';input.maxLength=40;input.placeholder='정답 제시어 입력';options.append(input);}else{const candidates=s.players.filter(p=>!p.out&&p.id!==s.you.id);candidates.forEach(p=>{const label=elem('label','option');const radio=elem('input');radio.type='radio';radio.name='target';radio.value=p.id;label.append(radio,elem('span',null,p.name));options.append(label);});if(!candidates.length)options.append(elem('p','muted','지목 가능한 학생이 없습니다.'));}$('modal').hidden=false;};
-$('submitChallenge').onclick=()=>{const s=session.state;if(!s)return;const spy=s.you.role==='spy';const word=spy?$('guessWord')?.value.trim():null;const targetId=spy?null:document.querySelector('input[name=target]:checked')?.value;if(s.phase==='final_guess'&&s.finalGuessDeadline&&s.finalGuessDeadline<=Date.now()+clockOffset)return toast('최종 추리 시간이 종료되었습니다.');if(spy&&!word)return toast('예상 제시어를 입력하세요.');if(!spy&&!targetId)return toast('지목할 학생을 선택하세요.');if(!confirm('챌린지를 확정하시겠습니까? 실패하면 아웃됩니다.'))return;request('student:challenge',{code:session.code,token:session.token,word,targetId},closeModal);};
+$('challengeBtn').onclick=()=>{const s=session.state;if(!s||(s.phase!=='playing'&&s.phase!=='final_guess')||s.paused||s.you.out||(s.phase==='final_guess'&&s.you.role!=='spy'))return;const spy=s.you.role==='spy';$('modalTitle').textContent=spy?'🕵️ 제시어 맞히기':'🎯 스파이 지목하기';$('modalHelp').textContent=spy?'챌린지는 익명입니다. 제시어 정답 기회는 총 2회이며, 두 번째 오답 때만 정체가 공개되고 아웃됩니다.':'익명으로 스파이를 지목합니다. 정답이면 스파이만 공개되고 본인 +1점, 오답이면 내 이름이 공개되고 아웃됩니다.';const options=$('modalOptions');options.replaceChildren();if(spy){const input=elem('input');input.id='guessWord';input.maxLength=40;input.placeholder='정답 제시어 입력';options.append(input);}else{const candidates=s.players.filter(p=>!p.out&&p.id!==s.you.id);candidates.forEach(p=>{const label=elem('label','option');const radio=elem('input');radio.type='radio';radio.name='target';radio.value=p.id;label.append(radio,elem('span',null,p.name));options.append(label);});if(!candidates.length)options.append(elem('p','muted','지목 가능한 학생이 없습니다.'));}$('modal').hidden=false;};
+$('submitChallenge').onclick=()=>{const s=session.state;if(!s)return;const spy=s.you.role==='spy';const word=spy?$('guessWord')?.value.trim():null;const targetId=spy?null:document.querySelector('input[name=target]:checked')?.value;if(s.phase==='final_guess'&&s.finalGuessDeadline&&s.finalGuessDeadline<=Date.now()+clockOffset)return toast('최종 추리 시간이 종료되었습니다.');if(spy&&!word)return toast('예상 제시어를 입력하세요.');if(!spy&&!targetId)return toast('지목할 학생을 선택하세요.');if(!confirm(spy?'제시어를 제출할까요? 첫 오답은 비공개이고 두 번째 오답이면 아웃됩니다.':'챌린지를 확정하시겠습니까? 틀리면 아웃됩니다.'))return;request('student:challenge',{code:session.code,token:session.token,word,targetId},closeModal);};
 
 // Refresh the synchronized final-guess countdown following state changes.

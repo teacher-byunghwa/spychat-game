@@ -116,3 +116,13 @@ server {
 - 서버는 메시지를 최대 160자로 제한하고 전송 간격을 1.2초로 제한합니다. 최근 60개 메시지만 메모리에 보관합니다.
 - 라운드가 끝나거나 일시정지되면 학생 채팅을 보낼 수 없습니다. 아웃된 학생은 읽기만 가능합니다.
 - 자유 채팅은 게임방별로 분리되며 새 라운드 시작 때 기록이 초기화됩니다.
+
+## V8 changes (2026-11-07)
+- When all spies are caught, EVERY non-kicked regular student receives +1, including eliminated students. The same centralized award applies when the final 60-second timer expires. Team points are given once, and deferred successful challenge points remain additive.
+- Round-end ranking marks the regular-student team victory point as `(팀 승리 +1)`.
+- Elimination announcements use text-free `student-character.png` or `spy-character.png` above separate dynamic text showing who was eliminated. The earlier result-banner images with embedded Korean text are no longer used for eliminations.
+- Existing in-memory rooms and scores reset on process restart: perform an update only between lessons/rounds.
+
+
+## V10 스파이 정답 2회
+각 스파이는 라운드마다 최대 2번 제시어를 추측할 수 있습니다. 1회 오답은 본인에게만 알리고 탈락/공개되지 않습니다. 2회 오답에서만 탈락 및 정체 공개가 발생합니다. 설명 중과 최종 60초는 동일한 총 2회 횟수를 공유합니다. 다음 라운드에서는 횟수가 초기화됩니다.

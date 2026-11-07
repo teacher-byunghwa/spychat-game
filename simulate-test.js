@@ -77,3 +77,81 @@ check(other.s.send('student:chat',{code:e.code,token:other.token,text:'다시 �
 check(e.teacher.send('teacher:action',{code:e.code,token:e.teacherToken,action:'stop'})?.ok,'end round');
 check(!other.s.send('student:chat',{code:e.code,token:other.token,text:'종료 후 메시지'})?.ok,'chat disabled after finish');
 console.log('PASS '+total+' simulated assertions including V7 room-isolated casual chat. Not a real network/browser load test.');
+// V8 regression: finding the final spy awards each civilian +1 (including out),
+// while the anonymous successful challenger receives the deferred +1 separately.
+const f=setup(5,1);
+const fSpy=f.students.find(p=>p.s.last('student:state').you.role==='spy');
+const fCivilians=f.students.filter(p=>p.s.last('student:state').you.role==='student');
+const fSpyId=fSpy.s.last('student:state').you.id;
+const fCivIds=fCivilians.map(p=>p.s.last('student:state').you.id);
+check(fCivilians[0].s.send('student:challenge',{code:f.code,token:fCivilians[0].token,targetId:fCivIds[1]})?.ok,'v8 wrong civilian guess accepted');
+check(fCivilians[0].s.last('student:state').you.out,'v8 incorrectly guessing civilian eliminated');
+check(fCivilians[2].s.send('student:challenge',{code:f.code,token:fCivilians[2].token,targetId:fSpyId})?.ok,'v8 final spy found');
+const fFinished=f.teacher.last('teacher:state');
+check(fFinished.phase==='finished'&&fFinished.result.winner==='student','v8 elimination victory');
+check(fCivilians.every((p,i)=>p.s.last('student:state').you.score===(i===2?2:1)),'v8 all civilians +1 incl eliminated, challenger additionally +1');
+check(fSpy.s.last('student:state').you.score===0,'v8 spy gets no bonus');
+check(fFinished.result.leaderboard.filter(p=>fCivIds.includes(p.id)).every(p=>p.teamBonus===1),'v8 ranking indicates +1 team reward');
+check(f.teacher.send('teacher:action',{code:f.code,token:f.teacherToken,action:'start',payload:{word:'학교',spyCount:1}})?.ok,'v8 second round');
+check(fCivilians.every((p,i)=>p.s.last('student:state').you.score===(i===2?2:1)),'v8 score persists after start of next round');
+console.log('PASS '+total+' simulated assertions including V8 civilian team award and leaderboard.');
+// V9 regression: elimination broadcasts identify ONLY the real participant,
+// never a fixed sample name; teacher can start an entirely new scoreboard.
+const g=setup(5,2);
+const gCiv=g.students.filter(p=>p.s.last('student:state').you.role==='student');
+const gSpy=g.students.filter(p=>p.s.last('student:state').you.role==='spy');
+const gCivId=p=>p.s.last('student:state').you.id;
+check(gCiv[0].s.send('student:challenge',{code:g.code,token:gCiv[0].token,targetId:gCivId(gCiv[1])})?.ok,'v9 wrong guess submitted');
+let gPopup=g.teacher.last('challenge:announcement');
+check(gPopup.type==='student-out'&&gPopup.eliminatedId===gCivId(gCiv[0]),'v9 failed guess names the challenger ID');
+check(gPopup.eliminatedName===gCiv[0].name&&gPopup.message.includes(gCiv[0].name),'v9 failed guess names real challenger');
+check(!gPopup.message.includes('민준')&&!gPopup.message.includes(gCiv[1].name),'v9 no sample or innocent target name');
+check(gCiv[2].s.send('student:challenge',{code:g.code,token:gCiv[2].token,targetId:gCivId(gSpy[0])})?.ok,'v9 real spy identified');
+gPopup=g.teacher.last('challenge:announcement');
+check(gPopup.eliminatedId===gCivId(gSpy[0])&&gPopup.eliminatedName===gSpy[0].name,'v9 identified spy actual ID/name');
+check(!gPopup.message.includes(gCiv[2].name),'v9 successful challenger still anonymous');
+check(gSpy[1].s.send('student:challenge',{code:g.code,token:gSpy[1].token,word:'오답'})?.ok,'v10 first incorrect spy guess');
+check(!gSpy[1].s.last('student:state').you.out,'v10 spy survives first wrong guess');
+check(gSpy[1].s.last('student:state').you.spyGuessAttempts===1,'v10 private guess counter increments');
+check(g.teacher.last('challenge:announcement').eliminatedId!==gCivId(gSpy[1]),'v10 no public identity reveal on first incorrect guess');
+check(gSpy[1].s.send('student:challenge',{code:g.code,token:gSpy[1].token,word:'또오답'})?.ok,'v10 second incorrect spy guess');
+gPopup=g.teacher.last('challenge:announcement');
+check(gPopup.eliminatedId===gCivId(gSpy[1])&&gPopup.eliminatedName===gSpy[1].name,'v9 incorrect guessing spy actual ID/name');
+check(g.teacher.last('teacher:state').phase==='finished','v9 all spies out finishes');
+check(g.teacher.send('teacher:action',{code:g.code,token:g.teacherToken,action:'new_game'})?.ok,'v9 teacher reset accepted');
+const gReset=g.teacher.last('teacher:state');
+check(gReset.phase==='lobby'&&gReset.round===0&&gReset.gameVersion===2,'v9 reset and new role reveal epoch');
+check(gReset.code===g.code&&gReset.players.length===5,'v9 room code and participants preserved');
+check(gReset.players.every(p=>p.score===0&&!p.out),'v9 scores reset and participants restored');
+check(gReset.result===null,'v9 old round result removed');
+check(g.teacher.send('teacher:action',{code:g.code,token:g.teacherToken,action:'start',payload:{word:'새제시어',spyCount:1}})?.ok,'v9 start a new game after reset');
+check(g.teacher.last('teacher:state').round===1&&g.teacher.last('teacher:state').phase==='playing','v9 first round of new game');
+check(!g.teacher.send('teacher:action',{code:g.code,token:g.teacherToken,action:'new_game'})?.ok,'v9 reset blocked during active round');
+console.log('PASS '+total+' simulated assertions including V9 actual elimination identity and new game reset.');
+
+// V10: one private miss followed by correct answer; attempts reset next round.
+const h=setup(5,2);
+const hSpy=h.students.find(p=>p.s.last('student:state').you.role==='spy');
+const hSpyState=()=>hSpy.s.last('student:state').you;
+const hPopupCount=()=>h.teacher.events.filter(e=>e.name==='challenge:announcement').length;
+const hPopups=hPopupCount();
+check(hSpy.s.send('student:challenge',{code:h.code,token:hSpy.token,word:'버스'})?.ok,'v10 first private miss acknowledged');
+check(!hSpyState().out&&hSpyState().spyGuessAttempts===1,'v10 first miss retains spy and one chance');
+check(hPopupCount()===hPopups,'v10 first miss not announced to room');
+check(hSpy.s.last('challenge:feedback').message.includes('남은 기회 1회'),'v10 only the spy sees remaining attempts');
+check(!h.teacher.last('teacher:state').players.some(p=>'spyGuessAttempts' in p),'v10 attempts not visible on public participant list');
+check(hSpy.s.send('student:challenge',{code:h.code,token:hSpy.token,word:'놀이공원'})?.ok,'v10 correct second attempt');
+check(h.teacher.last('teacher:state').phase==='finished','v10 correct second attempt wins');
+check(hSpyState().score===2,'v10 correct second attempt gets 2 points');
+check(h.teacher.send('teacher:action',{code:h.code,token:h.teacherToken,action:'start',payload:{word:'새제시어',spyCount:2}})?.ok,'v10 next round starts');
+check(h.students.filter(p=>p.s.last('student:state').you.role==='spy').every(p=>p.s.last('student:state').you.spyGuessAttempts===0),'v10 spy attempts reset to zero each round');
+// The 60-second final phase does not give additional attempts beyond two.
+const j=setup(4,1);
+const jSpy=j.students.find(p=>p.s.last('student:state').you.role==='spy');
+check(jSpy.s.send('student:challenge',{code:j.code,token:jSpy.token,word:'아님'})?.ok,'v10 first miss before final phase');
+while(j.teacher.last('teacher:state').phase==='playing'){const st=j.teacher.last('teacher:state');const speaker=j.students.find(p=>p.s.last('student:state').you.id===st.turnId);check(speaker.s.send('student:clue',{code:j.code,token:speaker.token,text:'설명 입력'})?.ok,'v10 clue until final phase');}
+check(j.teacher.last('teacher:state').phase==='final_guess','v10 final phase starts');
+check(jSpy.s.send('student:challenge',{code:j.code,token:jSpy.token,word:'또아님'})?.ok,'v10 second miss in final phase');
+check(jSpy.s.last('student:state').you.out,'v10 eliminated on second miss across phases');
+check(j.teacher.last('teacher:state').result.winner==='student','v10 last spy out awards students victory');
+console.log('PASS '+total+' simulated assertions including V10 two spy guess attempts.');

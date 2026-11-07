@@ -72,3 +72,9 @@
 .chatForm input{padding:10px 11px;min-width:0;font-size:.88rem}
 .chatForm button{margin:0;padding:10px 14px;background:#32496a;color:#fff;font-size:.83rem}
 .chatNote{margin:7px 0 0;font-size:.73rem}
+
+/* V8: text-free character art above separately rendered elimination wording. */
+.resultArt {display:block;width:min(54vw,170px);height:170px;max-height:none;object-fit:contain;object-position:center;margin:2px auto 16px;border-radius:22px;background:linear-gradient(145deg,#28395d,#131e32);padding:10px;box-shadow:0 10px 28px #0005;}
+.resultDialog {text-align:center;}
+.resultDialog #resultPopupMessage {font-size:1.08rem;line-height:1.65;font-weight:700;}
+@media(max-width:420px){.resultArt {width:150px;height:150px;max-height:none;}}
