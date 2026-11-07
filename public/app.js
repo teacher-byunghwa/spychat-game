@@ -35,7 +35,7 @@ function addRanks(target,ranking){
 }
 function showRoundResult(result){if(!result||lastRoundShown===result.id)return;lastRoundShown=result.id;
  $('roundPopupMessage').textContent=result.message+` · 제시어: ${result.word} · 스파이: ${result.spies.map(p=>p.name).join(', ')}`;
- $('roundArt').src='/assets/ranking-banner.png';
+ $('roundArt').src='/assets/celebration.svg';
  addRanks('roundPopupRanks',result.leaderboard);$('roundPopup').hidden=false;playSound('round');
 }
 function stageRoundResult(result){if(!result||lastRoundShown===result.id)return;
@@ -89,13 +89,19 @@ socket.on('challenge:announcement',item=>{
  if(item.id)seenAnnouncements.add(item.id);
  resultQueue.push(item);showNextResult();
 });
-$('dismissResult').onclick=()=>{$('resultPopup').hidden=true;showNextResult();};
+$('dismissResult').onclick=()=>{$('resultPopup').hidden=true;showNextResult();maybeShowTurnReminder();};
 
 $('createBtn').onclick=()=>request('room:create',{},r=>{session.mode='teacher';session.code=r.code;session.token=r.token;save();show('teacher');renderTeacher();});
 $('joinBtn').onclick=()=>{const code=$('roomCode').value.trim().toUpperCase();const name=$('studentName').value.trim();if(code.length!==6||!name)return toast('6자리 방 코드와 별명을 입력해 주세요.');request('student:join',{code,name},r=>{session.mode='student';session.code=r.code;session.token=r.token;save();show('student');});};
 $('studentName').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinBtn').click();});
 $('copyLink').onclick=()=>navigator.clipboard.writeText(inviteUrl()).then(()=>toast('입장 링크를 복사했습니다.')).catch(()=>toast('브라우저에서 복사가 제한되어 있습니다.'));
-$('startBtn').onclick=()=>teacherAction('start',{word:$('wordInput').value,spyCount:Number($('spyInput').value)});
+// The teacher explicitly chooses automatic or manual spy assignment on every start.
+function updateManualSpySection(){const manual=document.querySelector('input[name="spyMode"]:checked')?.value==='manual';$('manualSpySection').hidden=!manual;updateManualSpyCount();}
+function updateManualSpyCount(){const chosen=document.querySelectorAll('#manualSpyPlayers input:checked').length;const wanted=Number($('spyInput').value);$('manualSpyCount').textContent=`선택 ${chosen}명 / 설정 ${wanted}명`;}
+$('startBtn').onclick=()=>{const s=session.state;if(!s)return;const word=$('wordInput').value.trim();const count=Number($('spyInput').value);if(!word)return toast('제시어를 먼저 입력하세요.');if(!Number.isInteger(count)||count<1||count>=s.players.length)return toast('스파이 인원과 참가자 수를 확인하세요.');const holder=$('manualSpyPlayers');holder.replaceChildren();s.players.forEach(p=>{const label=elem('label','option');const cb=elem('input');cb.type='checkbox';cb.value=p.id;cb.addEventListener('change',updateManualSpyCount);label.append(cb,elem('span',null,p.name));holder.append(label);});document.querySelector('input[name="spyMode"][value="random"]').checked=true;updateManualSpySection();$('spySelectModal').hidden=false;};
+document.querySelectorAll('input[name="spyMode"]').forEach(r=>r.onchange=updateManualSpySection);
+$('cancelSpySelection').onclick=()=>{$('spySelectModal').hidden=true;};
+$('confirmSpySelection').onclick=()=>{const count=Number($('spyInput').value),mode=document.querySelector('input[name="spyMode"]:checked')?.value||'random';const ids=[...document.querySelectorAll('#manualSpyPlayers input:checked')].map(input=>input.value);if(mode==='manual'&&ids.length!==count)return toast(`스파이를 정확히 ${count}명 선택하세요.`);if(mode==='manual'&&!confirm('선택한 학생들을 스파이로 지정할까요?'))return;request('teacher:action',{code:session.code,token:session.token,action:'start',payload:{word:$('wordInput').value,spyCount:count,spyMode:mode,spyIds:mode==='manual'?ids:[]}},()=>{$('spySelectModal').hidden=true;toast('라운드를 시작했습니다.');});};
 $('pauseBtn').onclick=()=>teacherAction('pause');$('skipBtn').onclick=()=>teacherAction('skip');$('stopBtn').onclick=()=>{if(confirm('이번 라운드를 즉시 종료할까요?'))teacherAction('stop');};$('lobbyBtn').onclick=()=>{if(confirm('대기실로 돌아갈까요? 점수는 유지됩니다.'))teacherAction('lobby');};
 $('newGameBtn').onclick=()=>{if(confirm('새 게임을 시작할까요? 참가자와 방 코드는 유지하지만 모든 학생 점수는 0점으로 초기화됩니다.'))teacherAction('new_game');};
 function makePlayer(p,teacher=false,role=null){const root=elem('div','player'+(p.out?' out':''));root.append(elem('div','avatar',p.out?'✕':'🙂'));const meta=elem('div','playerMeta');meta.append(elem('b',null,p.name));const labels=[p.out?'아웃':p.online?'접속 중':'오프라인'];if(p.revealed)labels.push('스파이 공개');if(teacher&&role==='spy')labels.push('🕵️ 스파이');meta.append(elem('small',null,labels.join(' · ')));root.append(meta,elem('div','playerScore',p.score+'점'));if(teacher){const kick=elem('button','kick','강퇴');kick.disabled=p.out&&p.revealed;kick.onclick=()=>{if(confirm(`${p.name} 학생을 강퇴할까요?`))teacherAction('kick',{playerId:p.id});};root.append(kick);}return root;}
@@ -159,6 +165,7 @@ $('roleRevealConfirm').onclick=()=>{
   try{sessionStorage.setItem(roleSeenKey(s),'1');}catch(e){}
  }
  $('roleReveal').hidden=true;
+ maybeShowTurnReminder();
 };
 function closeWordPeek(){$('wordPeek').hidden=true;}
 $('closeWordPeek').onclick=closeWordPeek;
@@ -169,10 +176,36 @@ $('checkWordBtn').onclick=()=>{
  $('wordPeekMessage').textContent=s.you.role==='student'?`제시어: ${s.you.word}`:'제시어를 확인할 수 없습니다.';
  $('wordPeek').hidden=false;
 };
+// Show an identical, private reminder exactly once when this student gets a new turn.
+// Remember the turn in this browser tab, so reconnects and chat state updates don't repeat it.
+function currentTurnReminderKey(s){
+ if(session.mode!=='student'||s?.phase!=='playing'||s.paused||s.you?.out||s.turnId!==s.you?.id)return null;
+ return `spy-turn-notified:${session.code}:${session.token}:${s.gameVersion||1}:${s.round}:${s.turnId}`;
+}
+function maybeShowTurnReminder(){
+ const s=session.state,key=currentTurnReminderKey(s);
+ if(!key){$('turnReminder').hidden=true;return;}
+ if(!$('turnReminder').hidden)return;
+ // The private role-reveal popup has priority when a new round begins.
+ if(!$('roleReveal').hidden||!$('resultPopup').hidden||!$('roundPopup').hidden)return;
+ try{if(sessionStorage.getItem(key)==='1')return;}catch(e){}
+ $('turnReminder').hidden=false;
+ try{sessionStorage.setItem(key,'1');}catch(e){}
+ playSound('clue');
+}
+$('dismissTurnReminder').onclick=()=>{
+ $('turnReminder').hidden=true;
+ const s=session.state;
+ if(currentTurnReminderKey(s)){
+   const input=$('clueInput');input.scrollIntoView({behavior:'smooth',block:'center'});
+   input.focus({preventScroll:true});
+ }
+};
 function renderStudent(){const s=session.state;if(!s)return;const you=s.you;renderChat('studentChat',s.chat);const canChat=s.phase!=='finished'&&!s.paused&&!you.out;$('chatInput').disabled=!canChat;$('chatBtn').disabled=!canChat;const playing=s.phase==='playing';const final=s.phase==='final_guess';const active=(playing||final)&&!s.paused&&!you.out;const yourTurn=s.turnId===you.id;const turn=s.players.find(p=>p.id===s.turnId);$('studentCode').textContent=s.code;$('checkWordBtn').disabled=!((playing||final)&&you.role);if(!playing&&!final)closeWordPeek();const role=$('roleCard');role.replaceChildren();role.className='roleCard identityCard';
- role.append(elem('div','roleTitle',`👤 ${you.name}`));
+ const myName=elem('button','roleTitle roleNameButton',`👤 ${you.name} ▾`);myName.type='button';myName.title='나의 비밀 정보 확인';myName.onclick=()=>{const current=session.state?.you;if(!current||session.state.phase==='lobby')return;const details=$('spyTeamContents');details.replaceChildren();if(current.role==='spy'){details.append(elem('p',null,'당신은 스파이입니다.'));const others=current.spyTeammates||[];if(others.length){details.append(elem('p',null,'같은 팀 스파이:'));for(const p of others)details.append(elem('div','spyFriend',`${p.name}${p.out?' (탈락)':''}`));}else details.append(elem('p',null,'이번 라운드에는 나 외에 다른 스파이가 없습니다.'));}else{details.append(elem('p',null,'당신은 일반학생입니다.'));details.append(elem('p',null,`제시어: ${current.word||''}`));}$('spyTeamModal').hidden=false;};role.append(myName);
  role.append(elem('p',null,s.phase==='lobby'?'게임 시작을 기다리고 있습니다.':'설명을 듣고 게임에 참여하세요. 제시어 확인 버튼은 모든 참가자에게 있습니다.'));
  syncRoleReveal(s);
+ maybeShowTurnReminder();
  $('studentBanner').textContent=s.phase==='lobby'?'교사가 게임을 시작하기를 기다리고 있습니다.':s.phase==='finished'?(s.result?.message||'게임 종료')+(s.result?' · 정답: '+s.result.word:''):you.out?'🚫 아웃되었습니다. 점수와 진행 상황은 계속 볼 수 있습니다.':final?'⏳ 모든 설명이 끝났습니다. 스파이에게 마지막 60초의 추리 기회가 주어집니다.':s.paused?'⏸ 교사가 게임을 일시정지했습니다.':yourTurn?'✨ 지금 내 차례입니다. 설명을 작성하세요.':`현재 ${turn?.name||'다음 참가자'}의 차례입니다.`;
  $('turnIndicator').textContent=final?'최종 추리 60초':playing?(yourTurn?'내 차례':'대기 중'):s.phase==='lobby'?'대기실':'종료';$('clueBtn').disabled=!(active&&playing&&yourTurn);$('clueInput').disabled=!(active&&playing&&yourTurn);$('challengeBtn').disabled=!(active&&(playing||(final&&you.role==='spy')));$('challengeHint').textContent='챌린지는 익명으로 신청합니다. 실패하면 아웃될 수 있으니 신중하게 도전하세요.';
  renderHighlight('studentHighlight',s.highlight,'설명이 올라오면 이곳에 크게 표시됩니다.');const clues=$('clueList');clues.replaceChildren(...s.clues.map(c=>{const line=elem('div','clue');line.append(elem('b',null,c.name),elem('small',null,'설명'));line.append(elem('div',null,c.text));return line;}));if(!s.clues.length)clues.append(elem('p','muted','아직 등록된 설명이 없습니다.'));
@@ -183,3 +216,5 @@ $('challengeBtn').onclick=()=>{const s=session.state;if(!s||(s.phase!=='playing'
 $('submitChallenge').onclick=()=>{const s=session.state;if(!s)return;const spy=s.you.role==='spy';const word=spy?$('guessWord')?.value.trim():null;const targetId=spy?null:document.querySelector('input[name=target]:checked')?.value;if(s.phase==='final_guess'&&s.finalGuessDeadline&&s.finalGuessDeadline<=Date.now()+clockOffset)return toast('최종 추리 시간이 종료되었습니다.');if(spy&&!word)return toast('예상 제시어를 입력하세요.');if(!spy&&!targetId)return toast('지목할 학생을 선택하세요.');if(!confirm(spy?'제시어를 제출할까요? 첫 오답은 비공개이고 두 번째 오답이면 아웃됩니다.':'챌린지를 확정하시겠습니까? 틀리면 아웃됩니다.'))return;request('student:challenge',{code:session.code,token:session.token,word,targetId},closeModal);};
 
 // Refresh the synchronized final-guess countdown following state changes.
+
+$('closeSpyTeam').onclick=()=>{$('spyTeamModal').hidden=true;};

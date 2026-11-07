@@ -155,3 +155,24 @@ check(jSpy.s.send('student:challenge',{code:j.code,token:jSpy.token,word:'또아
 check(jSpy.s.last('student:state').you.out,'v10 eliminated on second miss across phases');
 check(j.teacher.last('teacher:state').result.winner==='student','v10 last spy out awards students victory');
 console.log('PASS '+total+' simulated assertions including V10 two spy guess attempts.');
+
+// V11: manual selection is validated before round state changes; private teammate list.
+const k=setup(6,2);
+const kSpies=k.students.filter(p=>p.s.last('student:state').you.role==='spy');
+const kCivs=k.students.filter(p=>p.s.last('student:state').you.role==='student');
+check(kSpies.every(p=>p.s.last('student:state').you.spyTeammates.length===1),'v11 spies privately see one other spy');
+check(kSpies[0].s.last('student:state').you.spyTeammates[0].id===kSpies[1].s.last('student:state').you.id,'v11 teammate identity correct');
+check(kCivs.every(p=>p.s.last('student:state').you.spyTeammates.length===0),'v11 civilians never receive spy teammate list');
+check(!('spyTeammates' in k.teacher.last('teacher:state').players[0]),'v11 no teammate list in public roster');
+// Finish first round and ask the teacher to manually choose two actual players.
+check(k.teacher.send('teacher:action',{code:k.code,token:k.teacherToken,action:'stop'})?.ok,'v11 teacher can end round');
+const invalidIds=[k.students[0].s.last('student:state').you.id];
+const phaseBefore=k.teacher.last('teacher:state').phase;
+check(!k.teacher.send('teacher:action',{code:k.code,token:k.teacherToken,action:'start',payload:{word:'새 단어',spyCount:2,spyMode:'manual',spyIds:invalidIds}})?.ok,'v11 rejects wrong number of manual spies');
+check(k.teacher.last('teacher:state').phase===phaseBefore,'v11 rejected assignment does not change phase');
+const selection=[k.students[1].s.last('student:state').you.id,k.students[4].s.last('student:state').you.id];
+check(!k.teacher.send('teacher:action',{code:k.code,token:k.teacherToken,action:'start',payload:{word:'새 단어',spyCount:2,spyMode:'manual',spyIds:[selection[0],selection[0]]}})?.ok,'v11 rejects duplicate selected spy');
+check(k.teacher.send('teacher:action',{code:k.code,token:k.teacherToken,action:'start',payload:{word:'새 단어',spyCount:2,spyMode:'manual',spyIds:selection}})?.ok,'v11 accepts valid manual spies');
+check(k.students.filter(p=>p.s.last('student:state').you.role==='spy').every(p=>selection.includes(p.s.last('student:state').you.id)),'v11 only selected participants become spies');
+check(k.students.filter(p=>p.s.last('student:state').you.role==='student').every(p=>!selection.includes(p.s.last('student:state').you.id)),'v11 unselected participants are civilians');
+console.log('PASS '+total+' simulated assertions including V11 manual spy assignment and private teammate names.');

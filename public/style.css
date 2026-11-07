@@ -78,3 +78,18 @@
 .resultDialog {text-align:center;}
 .resultDialog #resultPopupMessage {font-size:1.08rem;line-height:1.65;font-weight:700;}
 @media(max-width:420px){.resultArt {width:150px;height:150px;max-height:none;}}
+
+/* V11: same clickable name control for both roles; details only in private modal */
+.roleNameButton{background:transparent;border:0;color:inherit;font:inherit;text-align:left;padding:5px 2px;cursor:pointer;box-shadow:none}
+.roleNameButton:hover{color:#c6d9ff}
+.manualSpyRoster{max-height:40vh;overflow:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin:12px 0}
+.spyFriend{border:1px solid #42567c;border-radius:10px;padding:9px 12px;margin:6px 0;background:#1c2a46;font-weight:800}
+
+/* Private turn notification: identical for civilian and spy */
+.turnReminderOverlay{z-index:65;background:rgba(3,9,23,.88)}
+.turnReminderDialog{text-align:center;border:2px solid #92acff;box-shadow:0 0 45px #5f7bee55,0 25px 80px #000b;max-width:420px}
+.turnReminderIcon{font-size:3.7rem;margin:2px 0 12px;animation:turnRing .65s ease-in-out 2}
+.turnReminderDialog h2{font-size:1.55rem;color:#ffe396}
+.turnReminderDialog p{color:#e4ecfc;font-size:1.02rem}
+@keyframes turnRing{0%,100%{transform:rotate(0)}25%{transform:rotate(14deg)}75%{transform:rotate(-14deg)}}
+@media(prefers-reduced-motion:reduce){.turnReminderIcon{animation:none}}
