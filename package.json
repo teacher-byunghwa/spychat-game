@@ -1,0 +1,20 @@
+{
+  "name": "classroom-spy-chat-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QR classroom real-time spy word guessing game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test:logic": "node simulate-test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "qrcode": "^1.5.4"
+  }
+}

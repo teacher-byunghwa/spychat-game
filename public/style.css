@@ -1,0 +1,74 @@
+:root{color-scheme:dark;--bg:#0e1526;--panel:#18243a;--line:#30405c;--text:#f5f7ff;--muted:#aab8ce;--purple:#846cf5;--blue:#3e90ff;--green:#31c6a1;--red:#f16a77}*{box-sizing:border-box}body{margin:0;font-family:Pretendard,'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:radial-gradient(circle at top left,#26355e 0,#0e1526 50%);color:var(--text);min-height:100vh}button,input,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:13px 16px;font-weight:800;transition:filter .15s}button:hover{filter:brightness(1.1)}button:disabled{opacity:.4;cursor:not-allowed}input,textarea{display:block;width:100%;border:1px solid var(--line);background:#0d172a;color:var(--text);border-radius:11px;padding:13px 14px;outline:none}input:focus,textarea:focus{border-color:var(--blue)}label{display:block;font-size:.85rem;color:var(--muted);font-weight:750;margin:17px 0 7px}h1{font-size:clamp(1.4rem,3vw,2rem);margin:5px 0 16px}h2{font-size:1.05rem;margin:0 0 15px}p{line-height:1.6}.subheading{margin-top:20px}.shell{max-width:1150px;margin:auto;padding:0 20px 32px}header{display:flex;align-items:center;justify-content:space-between;padding:20px 0;border-bottom:1px solid #2b3951;margin-bottom:24px}.brand{display:flex;gap:12px;align-items:center}.brand b{display:block;font-size:1.1rem}.brand small{display:block;color:var(--muted);margin-top:4px}.emblem{background:#26365b;border-radius:15px;padding:10px;font-size:24px}.pill{background:#253653;color:#c8daff;padding:6px 11px;border-radius:999px;font-size:.8rem;font-weight:750}.landing{display:grid;gap:24px;place-items:center}.hero{text-align:center;margin:40px 0 0}.heroIcon{font-size:66px}.hero p{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:19px;padding:23px;margin-bottom:18px;box-shadow:0 10px 25px #00000018}.narrow{width:min(100%,440px)}.sectionTitle{font-size:1.2rem;font-weight:850}.primary,.accent{width:100%;margin-top:15px;color:white;background:linear-gradient(120deg,#597df3,#8267e9)}.accent{background:linear-gradient(110deg,#118c9f,#25b6a0)}.secondary{background:#30415d;color:var(--text)}.danger{color:#fff;background:#a73c52}.or{text-align:center;color:var(--muted);font-size:.8rem;margin:15px}.narrow .secondary{width:100%}.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.alignStart{align-items:flex-start}.gap{gap:8px}.row>button{flex:1}.roomLabel{background:#273750;padding:11px;border-radius:11px;font-size:.85rem;white-space:nowrap}.roomLabel strong{letter-spacing:.16em;font-size:1.05rem}.eyebrow{letter-spacing:.1em;color:#9db6f7;font-size:.75rem;font-weight:850}.teacherGrid{display:grid;grid-template-columns:1fr 1.4fr;gap:18px}.teacherGrid>.panel{min-width:0}.qrbox{text-align:center}.qrbox img{display:block;width:min(70%,230px);margin:5px auto 10px;background:#fff;padding:10px;border-radius:10px}.muted{color:var(--muted)}.small{font-size:.84rem}.break{overflow-wrap:anywhere}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}.stats>div{text-align:center;background:#0f1c32;padding:15px 5px;border-radius:12px}.stats strong{display:block;font-size:1.8rem;color:#92d9ff}.stats small{color:var(--muted)}.buttonGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.buttonGrid button{margin:0}.buttonGrid .wide{grid-column:span 2}.info{background:#263754;border:1px solid #3b5380;color:#dbebff;border-radius:12px;padding:13px;margin:14px 0;line-height:1.55}.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}.player{display:flex;align-items:center;gap:10px;background:#101c30;border:1px solid #2d3c56;padding:12px;border-radius:13px}.avatar{display:grid;place-items:center;width:35px;height:35px;flex-shrink:0;border-radius:11px;background:#334665}.playerMeta{flex:1;min-width:0}.playerMeta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.playerMeta small{color:var(--muted)}.playerScore{font-weight:900;color:#9ddfff}.kick{font-size:.72rem;padding:7px;color:white;background:#853d4a}.out{opacity:.53}.highlight{padding:23px;border-radius:18px;border:1px solid #9b84ed;background:linear-gradient(135deg,#40356a,#253756);min-height:115px;display:flex;flex-direction:column;justify-content:center;gap:9px;font-size:1.25rem;line-height:1.6;word-break:break-word;white-space:pre-wrap;font-weight:800}.highlight .who{font-size:.8rem;font-weight:600;color:#c4b5ff}.highlight.empty{color:var(--muted);font-size:.94rem;background:#101c30;border:1px dashed var(--line)}.history,.clues{display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto}.history div,.clue{border-bottom:1px solid var(--line);padding:9px 0;line-height:1.5}.clue b{color:#a9cfff}.clue small{color:var(--muted);margin-left:8px}.roleCard{border:1px solid #496da0;border-radius:18px;padding:22px;background:linear-gradient(120deg,#223c62,#172c4a);margin:0 0 15px}.roleCard.spy{background:linear-gradient(120deg,#60305c,#352449);border-color:#9c5a92}.roleCard .roleTitle{font-size:1.35rem;font-weight:900}.roleCard .secret{font-size:1.6rem;font-weight:950;margin:10px 0}.roleCard p{font-size:.9rem;color:#d7e6f8;margin-bottom:0}textarea{resize:vertical}.overlay{position:fixed;inset:0;background:#000b;display:flex;justify-content:center;align-items:center;z-index:10;padding:16px}.overlay[hidden],[hidden]{display:none!important}.dialog{width:min(100%,470px);max-height:90vh;overflow:auto;background:#1a2941;border:1px solid #4b6187;border-radius:19px;padding:24px}.dialog .row{margin-top:10px}.iconbutton{color:white;background:#344661;padding:7px 11px}.option{display:flex;align-items:center;gap:10px;padding:12px;background:#0f1b2e;border:1px solid var(--line);margin:6px 0;border-radius:9px;cursor:pointer}.option input{width:auto}.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#dce8ff;color:#142440;padding:14px 20px;border-radius:12px;z-index:20;box-shadow:0 10px 45px #0009;max-width:90%;text-align:center;font-weight:800}@media(max-width:760px){.teacherGrid{grid-template-columns:1fr}.shell{padding:0 12px 28px}.panel{padding:17px}.row.between{flex-wrap:wrap}.roster{grid-template-columns:1fr 1fr}.hero{margin:15px 0 0}.heroIcon{font-size:42px}.hero p{font-size:.92rem}.roomLabel{padding:8px}.stats strong{font-size:1.3rem}}@media(max-width:420px){.roster{grid-template-columns:1fr}.brand b{font-size:.95rem}}
+
+.resultDialog{text-align:center;max-width:420px;border:2px solid #7798d9;box-shadow:0 20px 90px #000c}.resultIcon{font-size:64px;margin:6px 0 14px}.resultDialog h2{font-size:1.55rem;margin:0 0 12px}.resultDialog p{font-size:1.13rem;line-height:1.7;margin:0 0 20px}.resultDialog button{width:100%}
+
+/* V3 classroom live dashboard, animated results, leaderboard */
+.topControls{gap:8px}.soundBtn{border:1px solid #435879;background:#223450;color:#eef4ff;padding:9px 12px;font-size:.82rem;white-space:nowrap}
+.dashboard{background:linear-gradient(145deg,#192c49,#172238)}
+.liveMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:17px}
+.liveMetrics>div{background:#101d33;border:1px solid #2f4869;border-radius:12px;padding:13px;text-align:center}
+.liveMetrics small{color:#b6c9dd;display:block;font-size:.77rem}.liveMetrics strong{display:block;color:#b7e8ff;font-size:1.45rem;margin-top:5px}
+.liveTurn{background:#0e1a31;border-left:4px solid #55d3b9;padding:16px;border-radius:12px;margin:13px 0 18px}
+.liveTurn strong{display:block;font-size:clamp(1.45rem,3vw,2.2rem);padding:5px 0;color:#f9fbff}
+.eventFeed{display:grid;gap:6px}.eventLine{background:#101e32;border-radius:8px;padding:8px 11px;font-size:.87rem;color:#d6e4fa}
+.rankingPanel{border-color:#bd9c48;background:linear-gradient(155deg,#242c42,#18253d)}
+.rankLine{display:flex;align-items:center;gap:10px;padding:13px 10px;border-bottom:1px solid #344761}
+.rankLine:last-child{border-bottom:0}.rankPlace{min-width:45px;font-size:1.16rem}.rankName{flex:1;overflow-wrap:anywhere}.rankScore{color:#ffdf82;white-space:nowrap}
+.topRank{background:#2a354c;border-radius:9px;margin:4px 0}
+.roundDialog{text-align:center;max-width:540px;animation:popIn .45s cubic-bezier(.2,1.6,.3,1)}
+.roundDialog h2{font-size:1.8rem}.roundDialog p{font-size:.96rem;color:#cfdcf0}
+.roundRanks{text-align:left;max-height:42vh;overflow:auto;margin:12px 0}.trophyIcon{font-size:60px;animation:trophy .8s ease-in-out}
+.resultDialog{position:relative;overflow:hidden;animation:popIn .38s cubic-bezier(.2,1.6,.3,1)}
+.successEffect .resultDialog{border-color:#64ecc2;box-shadow:0 0 80px #25cfa13d,0 20px 70px #000b}
+.failureEffect .resultDialog{border-color:#f48791;box-shadow:0 0 80px #e65a6640,0 20px 70px #000b;animation:popIn .35s ease-out,shake .45s .36s}
+.resultIcon{animation:trophy .7s ease-out}.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.confettiPiece{position:absolute;left:var(--x);top:-18px;width:9px;height:15px;background:hsl(var(--hue),95%,65%);animation:confettiFall 1.8s var(--delay) ease-in forwards}
+@keyframes popIn{from{opacity:0;transform:scale(.75) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes trophy{0%{transform:scale(.4) rotate(-22deg)}65%{transform:scale(1.23) rotate(6deg)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
+@keyframes confettiFall{0%{transform:translateY(-10px) rotate(0);opacity:1}100%{transform:translateY(500px) rotate(580deg);opacity:0}}
+@media(max-width:560px){.liveMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}.soundBtn{padding:8px;font-size:.74rem}}
+@media(prefers-reduced-motion:reduce){.resultDialog,.trophyIcon,.confettiPiece,.roundDialog{animation:none!important}}
+
+/* Character illustrations extracted from the generated classroom concept art */
+.roleCard{min-height:185px;position:relative;overflow:hidden;padding-right:clamp(130px,30%,220px)}
+.rolePortrait{position:absolute;right:15px;top:50%;transform:translateY(-50%);width:clamp(100px,24%,165px);max-height:170px;object-fit:contain;object-position:center;border-radius:22px;box-shadow:0 8px 32px #0005}
+.resultArt{display:block;width:100%;max-height:220px;object-fit:cover;object-position:center 28%;border-radius:12px;margin-bottom:12px}
+.roundArt{display:block;width:100%;height:150px;object-fit:cover;object-position:center 35%;border-radius:12px;margin-bottom:8px}
+.resultIcon{font-size:32px;margin:4px 0}
+@media(max-width:420px){.roleCard{padding-right:115px}.rolePortrait{width:93px;right:10px}.roleCard .secret{font-size:1.25rem}.resultArt{max-height:175px}}
+
+/* Privacy: a neutral name badge replaces the private role card after first confirmation. */
+.roleCard.identityCard{min-height:auto;padding:18px 22px;background:linear-gradient(120deg,#233a60,#192941);border-color:#496da0}
+.roleCard.identityCard .roleTitle{font-size:1.25rem;overflow-wrap:anywhere}
+.roleCard.identityCard p{margin-top:5px}
+.roleRevealOverlay{z-index:50;background:rgba(3,9,23,.94)}
+.roleRevealDialog{text-align:center;max-width:410px;border:2px solid #809cff;box-shadow:0 25px 100px #000c}
+.roleRevealLabel{font-size:.85rem;color:#c8d7ff;font-weight:800;margin-bottom:10px}
+.roleRevealArt{display:block;height:180px;width:min(100%,230px);object-fit:contain;margin:5px auto 15px;border-radius:18px}
+.roleRevealDialog h2{font-size:1.55rem;margin:10px 0}
+.roleRevealSecret{font-size:1.25rem;font-weight:900;word-break:break-word;color:#fbdf81}
+
+/* Identical discreet recall button for both roles */
+.secretCheckRow{display:flex;justify-content:flex-end;margin:-5px 0 15px}
+.wordCheckButton{padding:7px 13px;background:#344967;color:#e7efff;border:1px solid #536d96;border-radius:999px;font-size:.78rem;font-weight:800;box-shadow:none}
+.wordCheckButton:disabled{opacity:.45}
+.wordPeekOverlay{z-index:60;background:rgba(5,12,29,.91)}
+.wordPeekDialog{max-width:370px;text-align:center}
+.wordPeekMessage{font-size:1.3rem;color:#ffdf80;font-weight:900;overflow-wrap:anywhere;min-height:42px}
+
+.finalGuessBar{margin:12px 0;padding:16px;border:2px solid #f59e0b;border-radius:18px;background:#422006;color:#fff;text-align:center;font-weight:700;animation:finalPulse 1.5s ease-in-out infinite;}
+.finalGuessBar strong{display:block;font-size:clamp(2rem,8vw,3.25rem);font-variant-numeric:tabular-nums;color:#fde68a;}
+.finalGuessBar small{display:block;font-weight:400;margin-top:4px;color:#fff7ed;}
+@keyframes finalPulse{50%{border-color:#fde68a;box-shadow:0 0 14px #f59e0b55;}}
+
+/* V7: compact, independent public student chat */
+.chatPanel{padding:16px 19px}.chatPanel h2{margin:0 0 9px}
+.casualChat{background:#0d1729;border:1px solid #30405c;border-radius:12px;min-height:90px;max-height:155px;overflow-y:auto;padding:9px 12px;display:flex;flex-direction:column;gap:7px;overscroll-behavior:contain}
+.casualMessage{display:flex;gap:9px;align-items:baseline;font-size:.84rem;line-height:1.45;overflow-wrap:anywhere}
+.casualMessage b{flex-shrink:0;color:#a9d4ff;max-width:35%;overflow-wrap:anywhere}
+.casualMessage span{min-width:0;white-space:pre-wrap}
+.chatForm{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:9px}
+.chatForm input{padding:10px 11px;min-width:0;font-size:.88rem}
+.chatForm button{margin:0;padding:10px 14px;background:#32496a;color:#fff;font-size:.83rem}
+.chatNote{margin:7px 0 0;font-size:.73rem}
