@@ -22,7 +22,7 @@ function active(p) { return !p.out && !p.kicked; }
 function list(room) { return [...room.players.values()].filter(p=>!p.kicked).map(p=>({id:p.id,name:p.name,online:!!p.socketId,out:p.out,revealed:p.revealed,score:p.score})); }
 function turnPlayer(room) { return room.turnOrder[room.turnIndex] || null; }
 function publicState(room) { return { code:room.code,phase:room.phase,round:room.round,gameVersion:room.gameVersion,paused:room.paused,players:list(room),spyCount:room.spyCount,turnId:turnPlayer(room),clues:room.clues.slice(-80),chat:room.chat.slice(-60),highlight:room.highlight,history:room.history.slice(-20),result:room.result,submitted:room.submitted,completedDescriptions:room.completedDescriptions?.size||0,finalGuessDeadline:room.finalGuessDeadline||null,finalGuessRemaining:room.finalGuessRemaining||null,serverTime:now(),connectedCount:list(room).filter(p=>p.online).length,activeCount:list(room).filter(p=>!p.out).length }; }
-function teacherState(room) {return {...publicState(room),word:room.word,teacherOnline:!!room.teacherSocketId,spyIds:[...room.players.values()].filter(p=>p.role==='spy').map(p=>p.id)}; }
+function teacherState(room) {return {...publicState(room),allClues:room.clues.slice(),word:room.word,teacherOnline:!!room.teacherSocketId,spyIds:[...room.players.values()].filter(p=>p.role==='spy').map(p=>p.id)}; }
 function personalState(room,p){return {...publicState(room),you:{id:p.id,name:p.name,role:p.role,word:p.role==='student'&&room.phase!=='lobby' ? room.word : null,score:p.score,out:p.out,spyGuessAttempts:p.role==='spy'?(p.spyGuessAttempts||0):null,spyTeammates:p.role==='spy'&&room.phase!=='lobby' ? [...room.players.values()].filter(q=>q.role==='spy'&&!q.kicked&&q.id!==p.id).map(q=>({id:q.id,name:q.name,out:q.out})) : []}};}
 function emitRoom(room){ if(room.teacherSocketId) io.to(room.teacherSocketId).emit('teacher:state',teacherState(room)); for(const p of room.players.values()) if(p.socketId) io.to(p.socketId).emit('student:state',personalState(room,p)); }
 function audit(room,msg,forStudents=true){room.history.push({id:uid(),message:msg,time:now()}); room.history=room.history.slice(-80); if(!forStudents && room.history.length) room.history.pop();}
@@ -66,9 +66,28 @@ function bindStudent(socket,room,p){if(p.socketId && p.socketId!==socket.id)io.t
 io.on('connection',socket=>{
  socket.on('room:create',(_,ack)=>guarded(socket,ack,()=>{const code=roomCode();const room={code,teacherToken:uid(),teacherSocketId:null,players:new Map(),phase:'lobby',round:0,gameVersion:1,paused:false,finalGuessDeadline:null,finalGuessRemaining:null,finalGuessTimer:null,word:'',spyCount:1,turnOrder:[],turnIndex:0,submitted:false,clues:[],chat:[],highlight:null,history:[],result:null,completedDescriptions:new Set()};rooms.set(code,room);bindTeacher(socket,room);ack?.({ok:true,code,token:room.teacherToken});}));
  socket.on('teacher:rejoin',({code,token}={},ack)=>guarded(socket,ack,()=>{const room=getTeacher(socket,code,token);if(!room)return;bindTeacher(socket,room);ack?.({ok:true});}));
- socket.on('student:join',({code,name,token}={},ack)=>guarded(socket,ack,()=>{const room=rooms.get(trim(code,6).toUpperCase());if(!room){fail(socket,'입장 코드가 올바르지 않습니다.');return;} if(token){const p=[...room.players.values()].find(p=>equal(p.token,token)&&!p.kicked);if(p){bindStudent(socket,room,p);ack?.({ok:true,code:room.code,token:p.token,name:p.name});return;}}
- if(room.phase!=='lobby'){fail(socket,'게임 진행 중에는 신규 입장할 수 없습니다. 다음 라운드를 기다려 주세요.');return;}
- const n=trim(name,14);if(n.length<1){fail(socket,'이름을 입력해 주세요.');return;}if([...room.players.values()].some(p=>p.name===n&&!p.kicked)){fail(socket,'이미 사용 중인 이름입니다.');return;}if([...room.players.values()].filter(p=>!p.kicked).length>=MAX_PLAYERS){fail(socket,'입장 인원이 가득 찼습니다.');return;}
+ socket.on('student:join',({code,name,token,reclaimToken}={},ack)=>guarded(socket,ack,()=>{const room=rooms.get(trim(code,6).toUpperCase());if(!room){fail(socket,'입장 코드가 올바르지 않습니다.');return;} if(token){const p=[...room.players.values()].find(p=>equal(p.token,token)&&!p.kicked);if(p){bindStudent(socket,room,p);ack?.({ok:true,code:room.code,token:p.token,name:p.name});return;}}
+ const n=trim(name,14);if(n.length<1){fail(socket,'이름을 입력해 주세요.');return;}
+ // A student coming through the QR code again can reclaim an OFFLINE nickname.
+ // Keep their role and score during a round, but invalidate their previous login token.
+ // This is a replacement, never an extra entry on the roster.
+ const previous=[...room.players.values()].find(p=>p.name===n&&!p.kicked);
+ if(previous){
+  if(previous.socketId && !equal(previous.token,reclaimToken)){fail(socket,'이미 접속한 학생의 이름입니다. 본인의 기존 탭을 닫고 잠시 후 재입장하세요.');return;}
+  if(previous.socketId){io.to(previous.socketId).emit('session:replaced');const oldSocket=io.sockets.sockets.get(previous.socketId);if(oldSocket)oldSocket.disconnect(true);previous.socketId=null;}
+  // Reassign the participant identifier, removing the obsolete one from the roster.
+  const oldId=previous.id;room.players.delete(oldId);previous.id=uid();previous.token=uid();
+  room.players.set(previous.id,previous);
+  room.turnOrder=room.turnOrder.map(id=>id===oldId?previous.id:id);
+  if(room.completedDescriptions?.delete(oldId))room.completedDescriptions.add(previous.id);
+  for(const clue of room.clues)if(clue.playerId===oldId)clue.playerId=previous.id;
+  for(const chat of room.chat)if(chat.playerId===oldId)chat.playerId=previous.id;
+  if(room.highlight?.playerId===oldId)room.highlight.playerId=previous.id;
+  bindStudent(socket,room,previous);audit(room,`${n} 재입장 (이전 접속 정보 교체)`);emitRoom(room);
+  ack?.({ok:true,code:room.code,token:previous.token,name:n,rejoined:true});return;
+ }
+ if(room.phase!=='lobby'){fail(socket,'게임 진행 중에는 신규 입장할 수 없습니다. 기존 참가자는 같은 별명으로 재입장할 수 있습니다.');return;}
+ if([...room.players.values()].filter(p=>!p.kicked).length>=MAX_PLAYERS){fail(socket,'입장 인원이 가득 찼습니다.');return;}
  const p={id:uid(),token:uid(),name:n,socketId:null,role:null,score:0,pendingScore:0,spyGuessAttempts:0,out:false,kicked:false,revealed:false};room.players.set(p.id,p);bindStudent(socket,room,p);audit(room,`${n} 입장`);emitRoom(room);ack?.({ok:true,code:room.code,token:p.token,name:p.name});}));
  socket.on('teacher:action',({code,token,action,payload={}}={},ack)=>guarded(socket,ack,()=>{const r=getTeacher(socket,code,token);if(!r)return;const all=[...r.players.values()].filter(p=>!p.kicked);const n=Number(payload.spyCount);
  switch(action){

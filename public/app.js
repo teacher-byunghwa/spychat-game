@@ -46,14 +46,14 @@ $('dismissRound').onclick=()=>{$('roundPopup').hidden=true;};
 const elem=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e;};
 function toast(message){const t=$('toast');t.textContent=message;t.hidden=false;clearTimeout(timer);timer=setTimeout(()=>t.hidden=true,4000);}
 function show(mode){session.mode=mode;['home','teacher','student'].forEach(id=>$(id).hidden=id!==mode);}
-function save(){localStorage.setItem('spy-game-session',JSON.stringify({mode:session.mode,code:session.code,token:session.token}));}
+function save(){sessionStorage.setItem('spy-game-session',JSON.stringify({mode:session.mode,code:session.code,token:session.token}));}
 function request(event,data,cb){if(!socket.connected){toast('서버 연결을 확인해 주세요.');return;}socket.emit(event,data,(reply)=>{if(reply?.ok)cb?.(reply);});}
 function inviteUrl(){return `${location.origin}/?room=${encodeURIComponent(session.code)}`;}
 function teacherAction(action,payload={}){request('teacher:action',{code:session.code,token:session.token,action,payload},()=>{if(action==='start')toast('라운드를 시작했습니다.');});}
-function attach(){const saved=JSON.parse(localStorage.getItem('spy-game-session')||'null');const room=new URLSearchParams(location.search).get('room');if(room)$('roomCode').value=room.toUpperCase();if(!saved?.code||!saved?.token)return;if(room&&room.toUpperCase()!==saved.code)return;session.mode=saved.mode;session.code=saved.code;session.token=saved.token;if(saved.mode==='teacher')request('teacher:rejoin',{code:saved.code,token:saved.token},()=>{show('teacher');renderTeacher();});else if(saved.mode==='student')request('student:join',{code:saved.code,token:saved.token},()=>show('student'));}
-socket.on('connect',()=>{$('connection').textContent='● 서버 연결됨';attach();});socket.on('disconnect',()=>{$('connection').textContent='○ 연결 끊김';});socket.on('error:message',e=>toast(e.message));socket.on('session:replaced',()=>{toast('다른 기기에서 접속하여 연결이 바뀌었습니다.');localStorage.removeItem('spy-game-session');show('home');});socket.on('student:kicked',()=>{localStorage.removeItem('spy-game-session');session.state=null;show('home');toast('교사가 게임방에서 퇴장시켰습니다.');});
+function attach(){const saved=JSON.parse(sessionStorage.getItem('spy-game-session')||'null');const room=new URLSearchParams(location.search).get('room');if(room)$('roomCode').value=room.toUpperCase();if(!saved?.code||!saved?.token)return;if(room&&room.toUpperCase()!==saved.code)return;session.mode=saved.mode;session.code=saved.code;session.token=saved.token;if(saved.mode==='teacher')request('teacher:rejoin',{code:saved.code,token:saved.token},()=>{show('teacher');renderTeacher();});else if(saved.mode==='student')request('student:join',{code:saved.code,token:saved.token},()=>show('student'));}
+socket.on('connect',()=>{$('connection').textContent='● 서버 연결됨';attach();});socket.on('disconnect',()=>{$('connection').textContent='○ 연결 끊김';});socket.on('error:message',e=>toast(e.message));socket.on('session:replaced',()=>{toast('다른 기기에서 접속하여 연결이 바뀌었습니다.');sessionStorage.removeItem('spy-game-session');show('home');});socket.on('student:kicked',()=>{sessionStorage.removeItem('spy-game-session');session.state=null;show('home');toast('교사가 게임방에서 퇴장시켰습니다.');});
 socket.on('teacher:state',state=>{if(session.mode==='teacher'||session.mode===null){
- const previous=session.state;session.state=state;clockOffset=state.serverTime-Date.now();session.code=state.code;if(state.phase==='lobby'&&previous?.phase==='finished'){pendingRound=null;resultQueue.length=0;$('resultPopup').hidden=true;$('roundPopup').hidden=true;}show('teacher');renderTeacher();updateFinalClock();
+ const previous=session.state;session.state=state;clockOffset=state.serverTime-Date.now();session.code=state.code;if(previous&&previous.gameVersion!==state.gameVersion){$('wordInput').value='';} if(state.phase==='lobby'&&previous?.phase==='finished'){pendingRound=null;resultQueue.length=0;$('resultPopup').hidden=true;$('roundPopup').hidden=true;}show('teacher');renderTeacher();updateFinalClock();
  if(previous?.round===state.round&&previous.clues?.length<state.clues.length)playSound('clue');
  if(state.phase==='finished')stageRoundResult(state.result);
  }});
@@ -92,9 +92,15 @@ socket.on('challenge:announcement',item=>{
 $('dismissResult').onclick=()=>{$('resultPopup').hidden=true;showNextResult();maybeShowTurnReminder();};
 
 $('createBtn').onclick=()=>request('room:create',{},r=>{session.mode='teacher';session.code=r.code;session.token=r.token;save();show('teacher');renderTeacher();});
-$('joinBtn').onclick=()=>{const code=$('roomCode').value.trim().toUpperCase();const name=$('studentName').value.trim();if(code.length!==6||!name)return toast('6자리 방 코드와 별명을 입력해 주세요.');request('student:join',{code,name},r=>{session.mode='student';session.code=r.code;session.token=r.token;save();show('student');});};
+$('joinBtn').onclick=()=>{const code=$('roomCode').value.trim().toUpperCase();const name=$('studentName').value.trim();if(code.length!==6||!name)return toast('6자리 방 코드와 별명을 입력해 주세요.');
+ // The token is used ONLY after the student explicitly enters a nickname.
+ // Opening a new tab NEVER automatically signs them into an old game.
+ let reclaimToken=null;try{reclaimToken=JSON.parse(localStorage.getItem('spy-last-join:'+code+':'+name)||'null')?.token||null;}catch(e){}
+ request('student:join',{code,name,reclaimToken},r=>{session.mode='student';session.code=r.code;session.token=r.token;save();try{localStorage.setItem('spy-last-join:'+code+':'+name,JSON.stringify({token:r.token}));}catch(e){}show('student');});};
 $('studentName').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinBtn').click();});
 $('copyLink').onclick=()=>navigator.clipboard.writeText(inviteUrl()).then(()=>toast('입장 링크를 복사했습니다.')).catch(()=>toast('브라우저에서 복사가 제한되어 있습니다.'));
+$('showQrPopup').onclick=()=>{if(!session.code)return;$('largeQr').src='/qr/'+session.code+'?t='+Date.now();$('qrPopupCode').textContent=session.code;$('qrPopupLink').textContent=inviteUrl();$('qrPopup').hidden=false;};
+$('closeQrPopup').onclick=()=>{$('qrPopup').hidden=true;};
 // The teacher explicitly chooses automatic or manual spy assignment on every start.
 function updateManualSpySection(){const manual=document.querySelector('input[name="spyMode"]:checked')?.value==='manual';$('manualSpySection').hidden=!manual;updateManualSpyCount();}
 function updateManualSpyCount(){const chosen=document.querySelectorAll('#manualSpyPlayers input:checked').length;const wanted=Number($('spyInput').value);$('manualSpyCount').textContent=`선택 ${chosen}명 / 설정 ${wanted}명`;}
@@ -136,10 +142,10 @@ function renderTeacher(){const s=session.state;if(!s)return;$('teacherCode').tex
  $('liveTurnInfo').textContent=s.phase==='playing'?(s.paused?'교사가 일시정지한 상태입니다.': '설명을 입력하면 다음 학생으로 자동 이동합니다.'):'게임 시작 시 차례가 표시됩니다.';
  $('lastActivity').textContent=s.history.length?new Date(s.history[s.history.length-1].time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';
  $('teacherLiveEvents').replaceChildren(...[...s.history].slice(-5).reverse().map(h=>elem('div','eventLine',h.message)));
- if(s.phase==='lobby'&&s.round===0)$('wordInput').value='';$('teacherRanking').hidden=s.phase!=='finished';if(s.phase==='finished')addRanks('teacherRanking',s.result?.leaderboard);
+ $('teacherRanking').hidden=s.phase!=='finished';if(s.phase==='finished')addRanks('teacherRanking',s.result?.leaderboard);
  if(playing&&!$('wordInput').value)$('wordInput').value=s.word;const turn=s.players.find(p=>p.id===s.turnId);$('teacherStatus').textContent=s.phase==='lobby'?'학생들이 입장하면 제시어와 스파이 인원을 정하고 시작하세요.':s.phase==='finished'?(s.result?.message||'라운드가 종료되었습니다.'):(s.paused?'⏸ 일시정지 중 · ':'▶ 진행 중 · ')+(s.phase==='final_guess'?'최종 추리 시간 60초':turn?`현재 차례: ${turn.name}`:'차례 없음');$('teacherTurn').textContent=turn?'현재 차례: '+turn.name:'';
  $('teacherSecret').textContent=playing?`교사 전용 | 제시어: ${s.word} · 스파이: ${s.spyIds.map(id=>s.players.find(p=>p.id===id)?.name).join(', ')}`:'';
- renderChat('teacherChat',s.chat);const roster=$('teacherPlayers');roster.replaceChildren(...s.players.map(p=>makePlayer(p,true,s.spyIds.includes(p.id)?'spy':null)));renderHighlight('teacherHighlight',s.highlight,'아직 설명이 없습니다.');const hist=$('teacherHistory');hist.replaceChildren(...[...s.history].reverse().map(h=>elem('div',null,h.message)));}
+ renderChat('teacherChat',s.chat);const roster=$('teacherPlayers');roster.replaceChildren(...s.players.map(p=>makePlayer(p,true,s.spyIds.includes(p.id)?'spy':null)));renderHighlight('teacherHighlight',s.highlight,'아직 설명이 없습니다.');const clueHistory=$('teacherClueHistory');clueHistory.replaceChildren(...(s.allClues||s.clues).map((c,i)=>{const row=elem('div','teacherClueRecord');row.append(elem('b',null,`${i+1}. ${c.name}`),elem('span',null,c.text));return row;}));if(!(s.allClues||s.clues).length)clueHistory.append(elem('p','muted','아직 제출된 설명이 없습니다.'));const hist=$('teacherHistory');hist.replaceChildren(...[...s.history].reverse().map(h=>elem('div',null,h.message)));}
 // A private, one-time role reveal per student and round. The ordinary screen never
 // keeps role labels, role-specific art, or the secret word visible.
 let roleRevealKey=null;

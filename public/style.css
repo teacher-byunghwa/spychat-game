@@ -93,3 +93,10 @@
 .turnReminderDialog p{color:#e4ecfc;font-size:1.02rem}
 @keyframes turnRing{0%,100%{transform:rotate(0)}25%{transform:rotate(14deg)}75%{transform:rotate(-14deg)}}
 @media(prefers-reduced-motion:reduce){.turnReminderIcon{animation:none}}
+
+/* V13: classroom projection QR and persistent teacher clue history */
+.qrPopupDialog{max-width:600px;text-align:center;width:min(94vw,600px)}
+.largeQr{display:block;background:#fff;max-width:min(75vw,440px);max-height:56vh;aspect-ratio:1;object-fit:contain;margin:14px auto;border-radius:15px;padding:12px}
+.teacherClueHistory{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow:auto;margin:8px 0 20px}
+.teacherClueRecord{display:flex;flex-direction:column;gap:3px;padding:10px 14px;background:rgba(113,132,191,.12);border-radius:10px;word-break:break-word}
+.teacherClueRecord b{color:#b9c8ff}

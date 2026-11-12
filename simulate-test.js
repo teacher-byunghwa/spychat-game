@@ -176,3 +176,46 @@ check(k.teacher.send('teacher:action',{code:k.code,token:k.teacherToken,action:'
 check(k.students.filter(p=>p.s.last('student:state').you.role==='spy').every(p=>selection.includes(p.s.last('student:state').you.id)),'v11 only selected participants become spies');
 check(k.students.filter(p=>p.s.last('student:state').you.role==='student').every(p=>!selection.includes(p.s.last('student:state').you.id)),'v11 unselected participants are civilians');
 console.log('PASS '+total+' simulated assertions including V11 manual spy assignment and private teammate names.');
+// V13: old disconnected identity is replaced by a new identity, not duplicated.
+const v13=setup(5,2);
+const original=v13.students[0];
+const firstState=original.s.last('student:state');
+const firstId=firstState.you.id;
+const firstRole=firstState.you.role;
+const currentClueTurn=v13.teacher.last('teacher:state').turnId;
+// Simulate a genuine connection loss.
+original.s.handlers.disconnect();
+check(v13.teacher.last('teacher:state').players.find(p=>p.id===firstId).online===false,'v13 offline player visible until reclaimed');
+const fresh=io.connect();
+const reentered=fresh.send('student:join',{code:v13.code,name:original.name});
+check(reentered?.ok&&reentered.rejoined,'v13 offline nickname can rejoin from a new tab / QR');
+const after=v13.teacher.last('teacher:state');
+check(after.players.length===5,'v13 no duplicate player on reentry');
+check(!after.players.some(p=>p.id===firstId),'v13 old participant id deleted');
+check(after.players.filter(p=>p.name===original.name).length===1,'v13 nickname appears exactly once');
+check(fresh.last('student:state').you.role===firstRole,'v13 role maintained during active round');
+check(after.turnId!==(currentClueTurn===firstId?firstId:'___'),'v13 former turn id never persists');
+check(!original.s.send('student:chat',{code:v13.code,token:original.token,text:'old token attempt'})?.ok,'v13 former token invalidated');
+check(fresh.send('student:chat',{code:v13.code,token:reentered.token,text:'재입장했습니다'})?.ok,'v13 new credential works');
+// Teacher sees ALL submitted clues, even after new events and turns.
+for(let i=0;i<3;i++){
+ const st=v13.teacher.last('teacher:state');
+ const current=st.players.find(p=>p.id===st.turnId);
+ const source=current.name===original.name?{s:fresh,token:reentered.token}:v13.students.find(p=>p.name===current.name);
+ check(source.s.send('student:clue',{code:v13.code,token:source.token,text:'기록 '+i})?.ok,'v13 accumulated clue submitted');
+}
+const log=v13.teacher.last('teacher:state').allClues;
+check(log.length===3&&log[0].text==='기록 0'&&log[2].text==='기록 2','v13 teacher receives complete clue history');
+console.log('PASS '+total+' simulated assertions including V13 reconnect replacement and persistent teacher clue log.');
+// Returning in a NEW tab while the old tab is still open must require proof of ownership.
+const v13b=setup(4,1);
+const owner=v13b.students[0];
+const savedId=owner.s.last('student:state').you.id;
+const intruder=io.connect();
+check(!intruder.send('student:join',{code:v13b.code,name:owner.name})?.ok,'v13 active name cannot be hijacked without token');
+const duplicateTab=io.connect();
+const reclaimed=duplicateTab.send('student:join',{code:v13b.code,name:owner.name,reclaimToken:owner.token});
+check(reclaimed?.ok&&reclaimed.token!==owner.token,'v13 verified new tab replaces credential');
+check(duplicateTab.last('student:state').you.id!==savedId,'v13 verified new tab replaces obsolete identifier');
+check(v13b.teacher.last('teacher:state').players.length===4,'v13 verified new tab causes no duplicates');
+console.log('PASS '+total+' simulated assertions including V13 new tab authenticated reclaim.');
